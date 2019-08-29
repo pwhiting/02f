@@ -1,0 +1,38 @@
+#!/usr/bin/perl
+use XML::Simple;
+use Data::Dumper::Concise;
+use JSON::MaybeXS ();
+my $json = JSON::MaybeXS->new(utf8 => 1, pretty => 1, sort_by => 1);
+use Forge;
+my $config = XMLin(shift);
+my $policies=$config->{application}->{policy};
+# the default exists at a different level in the XML file,
+# create a new reference to it parallel to the others.
+$policies->{default}->{authorization}->{headers}=
+  $config->{application}->{authorization}->{default}->{headers};
+foreach $policy_name (keys $policies) {
+  next if $policy_name=~/ /;
+  print "$policy_name\n";
+  my $policy=$policies->{$policy_name}; # contains the hash ref
+  #print Dumper($policy);
+  my $name=$config->{application}->{authHost};
+  my $environment=$config->{environment}->{id};
+  my $policy_sn=$policy_name=~s/\{.*//r; #short name
+  $policy_sn="" if $policy_sn eq "default";
+  my $jconfig = {
+    active              => "true",
+    description         => "",
+    subject             => "",
+    applicationName     => "iPlanetAMWebAgentService",
+    resourceTypeUuid    => "feb3490d-5f5e-4413-ace8-b76ad5bdf172",
+    name                => Forge::Name($environment,$name,$policy_sn),
+    resources           => Forge::Resources($name,$policy_sn),
+    subject             => Forge::Subject(),
+    condition           => Forge::Condition(),
+    actionValues        => Forge::ActionValues($policy),
+    resourceAttributes  => Forge::ResourceAttributes($policy),
+  };
+  open my $fh,">","json/".Forge::Name($environment,$name,$policy_sn).".json";
+  print $fh $json->encode($jconfig);
+  close $fh;
+}
