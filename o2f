@@ -2,19 +2,23 @@
 use XML::Simple;
 use Data::Dumper::Concise;
 use JSON::MaybeXS ();
-my $json = JSON::MaybeXS->new(utf8 => 1, pretty => 1, sort_by => 1);
 use Forge;
+use Rules;
+
+my $json = JSON::MaybeXS->new(utf8 => 1, pretty => 1, sort_by => 1);
 my $config = XMLin(shift);
 my $policies=$config->{application}->{policy};
-# the default exists at a different level in the XML file,
-# create a new reference to it parallel to the others.
-$policies->{default}->{authorization}->{headers}=
-  $config->{application}->{authorization}->{default}->{headers};
+$policies->{default}={};
+
+my $default_auth=$config->{application}->{authorization}->{default}->{headers};
+
+Rules::MakeFilterRules $config->{application}->{authorization}->{rule};
+
+
 foreach $policy_name (keys $policies) {
   next if $policy_name=~/ /;
   print "$policy_name\n";
   my $policy=$policies->{$policy_name}; # contains the hash ref
-  #print Dumper($policy);
   my $name=$config->{application}->{authHost};
   my $environment=$config->{environment}->{id};
   my $policy_sn=$policy_name=~s/\{.*//r; #short name
@@ -30,7 +34,7 @@ foreach $policy_name (keys $policies) {
     subject             => Forge::Subject(),
     condition           => Forge::Condition(),
     actionValues        => Forge::ActionValues($policy),
-    resourceAttributes  => Forge::ResourceAttributes($policy),
+    resourceAttributes  => Forge::ResourceAttributes($policy,$default_auth),
   };
   open my $fh,">","json/".Forge::Name($environment,$name,$policy_sn).".json";
   print $fh $json->encode($jconfig);
