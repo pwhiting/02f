@@ -34,33 +34,22 @@ sub Resources {
 }
 #stub for now
 sub Subject {
-  my $hash={
-    type=>"AND",
-    "subjects"=>[
-      {
-        "type"=>"AuthenticatedUsers"
-      }
-    ]
-  };
+  my ($allowAnonymous)=@_;
+  my $hash=($allowAnonymous)?
+    {"type"=>"NOT","subject"=>"NONE"}: # should be subjects? (plural)
+    {"type"=>"AND","subjects"=>[{"type"=>"AuthenticatedUsers"}]};
   $hash;
 }
+
 #stub for now
 sub Condition {
-    my $hash={
-      type=>"AND",
-      "conditions" => [
-      {
-        "type" => "AuthLevelFlow",
-        "authLevel" => 200
-      },
-      {
-        "type" => "LDAPFilter",
-        "ldapFilter"=> "(&(!(ldsisAnonymous=*))(ldsmrn=*))"
-      }
-    ]
-  };
-  $hash;
+  my($authlevel,$filter)=@_;
+  my $cond=[];
+  push($cond,{"type"=>"AuthLevelFlow","authLevel"=>$authLevel}) if $authLevel;
+  push($cond,{"type"=>"LDAPFilter","ldapFilter"=>$filter}) if $filter;
+  {"type"=>"AND","conditions"=>$cond};
 }
+
 # input: three arguments - env, url, and policy name
 # output: replaces all / in url with ! and returns above variables
 #         concatinated with ! between each. If last variable is
