@@ -3,6 +3,7 @@ use strict;
 use Data::Dumper::Concise;
 use Scalar::Util qw/reftype/;
 
+
 #input: an xml expression - one of the following 3:
 # 1. <condition  type='ldap' >ldap:///ou=People,o=lds??sub?(X)</condition>
 # 2. <condition  type='role' value='Anyone' />
@@ -14,7 +15,6 @@ use Scalar::Util qw/reftype/;
 # if the condition was always true return (*) for allow and (!*) for deny.
 # if the condition was an ldap expression X, return (X) for allow and
 #    (!X) for deny.
-
 sub GetExpr {
   my ($condition,$expr)=@_;
   return if reftype $condition ne reftype {};
@@ -32,8 +32,7 @@ sub GetExpr {
 #        is the ldap expression which will match the exported rule.
 #        allow everything is returned as (*) and deny everything as (!*)
 sub MakeFilters {
-  my ($rules)=(@_);
-  my $hash={};
+  my ($self,$rules)=@_;
   my $allow="(*)";
   my $deny="(!*)";
 #  warn Dumper($rules);
@@ -53,10 +52,32 @@ sub MakeFilters {
     elsif (($A ne $D)&&($A ne $allow)&&($D ne $deny)) {$filter="(&$D$A)";}
     else {$filter=$D;}
 
-    $hash->{$rule}=$filter;
+    $self->{$rule}=$filter;
   }
-  $hash;
 }
+
+
+sub Lookup {
+  my ($self,$key)=@_;
+  if($key=~/\|/) {
+    my @keys=split /\s*\|\s*/, $key;
+    return "(|" . join("",(map {$self->{$_}} @keys)) . ")";
+  } elsif ($key=~/\&/) {
+    my @keys=split /\s*\&\s*/, $key;
+    return "(\&" . join("",(map {$self->{$_}} @keys)) . ")";;
+  } else {
+    return $self->{$key};
+  }
+}
+
+sub new {
+  my ($class,$xmlin)=@_;
+  my $self = {};
+  bless $self, $class; #self is now Rules class
+  $self->MakeFilters($xmlin);
+  return $self;
+}
+
 
 1;
 
