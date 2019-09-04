@@ -1,4 +1,5 @@
 package Policy;
+use JSON::MaybeXS ();
 use strict;
 use Rules;
 use Data::Dumper::Concise;
@@ -27,14 +28,17 @@ sub Scheme {
   $self->{authentication}->{scheme};
 }
 
+# check below - does this really need to be hostenv, as that doesn't
+# show up in the xml file anywhere.
 sub URL {
   my $self=shift;
-  "http*://" . $self->{parent}->Host . "/" . $self->{shortname};
+  "http*://" . $self->{parent}->HostEnv . ":*/" .
+    (($self->{shortname} ne "default")?$self->{shortname}:"");
 };
 
 sub Resources {
   my $self=shift;
-  [$self->URL . "*", $self->URL . "*?*"];
+  [$self->URL . "*?*", $self->URL . "*"];
 }
 
 sub Name {
@@ -51,7 +55,7 @@ sub ResourceAttributes {
   my @list=map {$profile->{$_}->{attribute}} (keys $profile);
   my $array=[];
   map {push($array,{
-      PropertyName  => CamoMap::recase($_),
+      propertyName  => CamoMap::recase($_),
       type          =>"User",
       propertyValues=>[]})} @list;
   $array;
@@ -64,32 +68,35 @@ sub ActionValues {
   my @list=split(/[,\"]/,$self->{operations});
   @list=qw(HEAD DELETE POST GET OPTIONS PATCH PUT) if !@list;
   my $hash={};
-  map {$hash->{$_}="true"} @list;
-  $hash;
+  map {$hash->{$_}=JSON::MaybeXS::true} @list;
+  return $hash;
 }
 
 sub Path {
   my $self=shift;
   my $name=$self->{parent}->ID . "/" . $self->{parent}->Host;
   $name.="/$self->{shortname}" if $self->{name} ne "default";
-  $name=~s/\//\!/gr;
+  return $name=~s/\//\!/gr;
 }
 
 sub Subjects {
   my $self=shift;
-  ($self->Scheme eq "anonymous")?
-    {"type"=>"NOT","subject"=>"NONE"}: # should be subjects? (plural)
-    {"type"=>"AND","subjects"=>[{"type"=>"AuthenticatedUsers"}]};
+  return ($self->Scheme eq "anonymous")?
+    {type=>"NOT",subject=>{type=>"NONE"}}: # should be subjects? (plural)
+    {type=>"AND",subjects=>[{type=>"AuthenticatedUsers"}]};
 }
 
 sub Conditions {
   my $self=shift;
-  my $filter=$self->Filter;
-  my $authlevel=200;
-  my $cond=[];
-  push($cond,{"type"=>"AuthLevelFlow","authLevel"=>$authlevel}) if $authlevel;
-  push($cond,{"type"=>"LDAPFilter","ldapFilter"=>$filter}) if $filter;
-  {"type"=>"AND","conditions"=>$cond};
+  if($self->Scheme ne "anonymous") {
+    my $filter=$self->Filter;
+    my $authlevel=200;
+    my $cond=[];
+    push($cond,{type=>"AuthLevelFlow",authLevel=>$authlevel}) if $authlevel;
+    push($cond,{type=>"LDAPFilter",ldapFilter=>$filter}) if $filter;
+    return {type=>"AND",conditions=>$cond};
+  }
+  return {conditions=>[]};
 }
 
 1;

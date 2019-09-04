@@ -33,7 +33,13 @@ sub ID {
   $self->{xml}->{environment}->{id};
 }
 
-sub ConstructDefaultPolicy {
+sub HostEnv {
+  my $self=shift;
+  my $id=$self->ID;
+  $self->Host=~s/\./-$id./r;
+}
+
+sub DefaultPolicy {
   my $self=shift;
   Policy->new({
     name=>"default",
@@ -49,7 +55,7 @@ sub ConstructDefaultPolicy {
 
 sub GetPolicies {
   my $self=shift;
-  my $policies=[$self->ConstructDefaultPolicy];
+  my $policies=[$self->DefaultPolicy];
   if($self->{app}->{policy}) {
     foreach my $name (keys $self->{app}->{policy}) {
       next if $name=~/ /; # remove all policies with space in name

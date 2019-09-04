@@ -19,11 +19,11 @@ sub GetExpr {
   my ($condition,$expr)=@_;
   return if reftype $condition ne reftype {};
   if($condition->{type} eq "ldap" ) {
-    $expr.=$1 if $condition->{content}=~/\((.*)\)/;
+    $expr.=$1 if $condition->{content}=~/(\(.*\))/;
   } elsif ($condition->{type} eq "role") {
     $expr.="*"if $condition->{value} eq "Anyone";
   }
-  return "($expr)";
+  return "$expr";
 }
 
 #input: hash reference of rules, each hash key being a rule name
@@ -33,8 +33,8 @@ sub GetExpr {
 #        allow everything is returned as (*) and deny everything as (!*)
 sub MakeFilters {
   my ($self,$rules)=@_;
-  my $allow="(*)";
-  my $deny="(!*)";
+  my $allow="*";
+  my $deny="!*";
 #  warn Dumper($rules);
   foreach my $rule (keys $rules) {
     next if $rule=~/~~default-headers~~/;
@@ -49,10 +49,10 @@ sub MakeFilters {
 
     if(!$A && !$D) {$filter=$deny;}
     elsif ($atp) {$filter=$A;}
-    elsif (($A ne $D)&&($A ne $allow)&&($D ne $deny)) {$filter="(&$D$A)";}
+    elsif (($A ne $D)&&($A ne $allow)&&($D ne $deny)) {$filter="&($D)$A";}
     else {$filter=$D;}
 
-    $self->{$rule}=$filter;
+    $self->{$rule}="($filter)";
   }
 }
 

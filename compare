@@ -1,0 +1,28 @@
+#!/usr/bin/perl
+
+#use strict;
+#use warnings;
+use File::JSON::Slurper qw/ read_json write_json /;
+use Data::Dumper::Concise;
+
+sub slurp {
+  my $file=shift;
+  my $json = read_json($file);
+  my @a=sort {$a->{propertyName} cmp $b->{propertyName}}
+    @{$json->{resourceAttributes}};
+  $json->{resourceAttributes}=\@a;
+  for my $condition (@{$json->{condition}->{conditions}}) {
+    print Dumper($condition);
+    $condition->{ldapFilter}=lc($condition->{ldapFilter})if $condition->{ldapFilter};
+  }
+
+  return $json;
+}
+
+my $jsonorig =  slurp(shift);
+my $jsonnew = slurp(shift);
+
+use Test::More;    ## Or use Test::More
+use Test::Differences;
+
+eq_or_diff $jsonorig,  $jsonnew,   "testing json";
