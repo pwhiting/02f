@@ -11,41 +11,85 @@ sub new {
     parent=>$args->{parent},
     authorization=>$args->{authorization} || $args->{xml}->{authorization},
     authentication=>$args->{authentication} || $args->{xml}->{authentication},
-    operations=>$args->{operations} || $args->{xml}->{operations}
+    operations=>$args->{operations} || $args->{xml}->{operations},
+    url=>$args->{url},
+    #shortname=>$args->{name}=~s/$remove/*/rg
   };
-  $self->{shortname}=$self->{name}=~s/\{.*//r;
+
+  $self->{url}=~s/\*?\{\/\.\.\.\/\*\,\*\}//g;
+  $self->{url}=~s/\/\.\.\.\/\*/\/\*/g;
+
   bless $self, $class;
+  $self->Resources;
   return $self;
 }
 
+sub Merge {
+  my $self=shift;
+  my $sibling=shift;
+  push($self->Resources,@{$sibling->Resources});
+}
 sub Filter {
   my $self=shift;
-  $self->{parent}->LookupFilter($self->{authorization}->{value});
+  return $self->{parent}->LookupFilter($self->{authorization}->{value});
+}
+
+sub FilterName {
+  my $self=shift;
+  return $self->{authorization}->{value};
 }
 
 sub Scheme {
   my $self=shift;
-  $self->{authentication}->{scheme};
+  return $self->{authentication}->{scheme};
 }
 
-# check below - does this really need to be hostenv, as that doesn't
-# show up in the xml file anywhere.
+sub Subdirectory {
+  my $self=shift;
+  return $self->{url};
+}
+
 sub URL {
   my $self=shift;
-  "http*://" . $self->{parent}->HostEnv . ":*/" .
-    (($self->{shortname} ne "default")?$self->{shortname}:"");
-};
+  return $self->{url};
+}
 
-sub Resources {
+sub FullURL {
   my $self=shift;
-  [$self->URL . "*?*", $self->URL . "*"];
+  return "http*://" . $self->{parent}->URL . (($self->URL)?"/".$self->URL:"");
+}
+
+# /.../ -> *?
+sub Resources {
+  my $self = shift;
+  $self->{resources} = $self->ExpandResources("http*://" . $self->{parent}->URL.$self->URL)
+    if(!defined $self->{resources});
+    #return [$self->FullURL . "*?*", $self->FullURL . "*"];
+  return $self->{resources};
+}
+
+sub ExpandResources {
+  my $self=shift;
+  my $url=shift; # this is recursive, so has to take this
+  # this needs to expand to include all possible resource matches
+  # look at the url and see if it contains a set. If it does
+  # expand the set to one resource for each element of the set
+  #print "expanding $url\n";
+  my $list=[];
+  if(my ($pre,$set,$post)=$url=~/(.*?)\{(.*?)\}(.*)/){
+    foreach my $item (split(",",$set)) {
+        push($list,@{$self->ExpandResources($pre.$item.$post)});
+    }
+  } else {
+    $list=[$url];
+  }
+  return $list;
 }
 
 sub Name {
   my $self=shift;
-  $self->{name};
+  return $self->{name};
 }
-
 
 sub ResourceAttributes {
   my $self=shift;
@@ -58,7 +102,7 @@ sub ResourceAttributes {
       propertyName  => CamoMap::recase($_),
       type          =>"User",
       propertyValues=>[]})} @list;
-  $array;
+  return $array;
 }
 
 # input: array of action actionValues
@@ -72,9 +116,10 @@ sub ActionValues {
   return $hash;
 }
 
+# maybe just select the top path
 sub Path {
   my $self=shift;
-  my $name=$self->{parent}->ID . "/" . $self->{parent}->Host;
+  my $name=$self->{parent}->EnvID . "/" . $self->{parent}->Host;
   $name.="/$self->{shortname}" if $self->{name} ne "default";
   return $name=~s/\//\!/gr;
 }

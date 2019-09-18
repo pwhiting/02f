@@ -52,7 +52,7 @@ sub MakeFilters {
     elsif (($A ne $D)&&($A ne $allow)&&($D ne $deny)) {$filter="&($D)$A";}
     else {$filter=$D;}
 
-    $self->{$rule}="($filter)";
+    $self->{$rule}="(". lc($filter). ")";
   }
 }
 
