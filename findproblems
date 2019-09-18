@@ -1,0 +1,43 @@
+#!/usr/bin/perl
+use OracleXML;
+use Policy;
+use strict;
+use Data::Dumper::Concise;
+
+sub Walk {
+  my ($hash,$isprotected)=@_;
+  foreach my $key (keys $hash) {
+    if($key eq "/permission") {
+      if($isprotected && !$hash->{$key}) {
+        print "permission problem at $key\n";
+      }
+    } else {
+      Walk($hash->{$key},$isprotected);
+    }
+  }
+}
+
+
+foreach my $file (@ARGV) {
+  warn "processing $file\n";
+  my $oracle=OracleXML->new($file);
+  my $hash={};
+  my $top;
+  foreach my $policy (@{$oracle->GetPolicies}) {
+    $top=$hash;
+    foreach my $part (split(/\//,$policy->URL)) {
+      if(!defined $top->{$part}) {
+        print "creating new node for $part\n";
+        $top->{$part}={};
+      } else {
+        print "$part existed\n";
+      }
+      $top=$top->{$part};
+    }
+    $top->{"/permission"}=($policy->Scheme eq "login");
+  }
+  print Dumper($hash);
+  Walk($hash,0);
+}
+
+__END__
