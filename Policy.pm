@@ -21,6 +21,7 @@ sub new {
 
   bless $self, $class;
   $self->Resources;
+  $self->Attributes;
   return $self;
 }
 
@@ -28,7 +29,12 @@ sub Merge {
   my $self=shift;
   my $sibling=shift;
   push($self->Resources,@{$sibling->Resources});
+  foreach my $attr (@{$sibling->Attributes}) {
+    $self->{attributes}->{$attr}+=
+      $sibling->{attributes}->{$attr};
+  }
 }
+
 sub Filter {
   my $self=shift;
   return $self->{parent}->LookupFilter($self->{authorization}->{value});
@@ -57,6 +63,35 @@ sub URL {
 sub FullURL {
   my $self=shift;
   return "http*://" . $self->{parent}->URL . (($self->URL)?"/".$self->URL:"");
+}
+
+sub Attributes {
+  my $self=shift;
+  return [keys $self->{attributes}] if defined $self->{attributes};
+  my $attrs=$self->{authorization}->{headers}->{success}->{"profile-att"};
+  return [] if(!$attrs);
+  foreach my $key (keys $attrs) {
+    $self->{attributes}->{CamoMap::recase($attrs->{$key}->{attribute})}=1;
+  }
+  return [keys $self->{attributes}];
+}
+
+sub ResourceAttributes {
+  my $self=shift;
+  return [map {{propertyName=>$_,type=>"User",propertyValues=>[]}}
+              @{$self->Attributes}];
+}
+
+sub Attributes1 {
+  my $self=shift;
+  $self->{attributes}=[];
+  print Dumper($self->{authorization}->{headers}->{success}->{"profile-att"});
+  if(my $profile=$self->{authorization}->{headers}->{success}->{"profile-att"}) {
+      $self->{attributes}=[map {CamoMap::recase($profile->{$_}->{attribute})}
+        (keys $profile)];
+  }
+  #print Dumper($self->{attributes});
+  return $self->{attributes};
 }
 
 # /.../ -> *?
@@ -91,28 +126,18 @@ sub Name {
   return $self->{name};
 }
 
-sub ResourceAttributes {
-  my $self=shift;
-  my $profile=
-    $self->{authorization}->{headers}->{success}->{"profile-att"};
-  return if !$profile;
-  my @list=map {$profile->{$_}->{attribute}} (keys $profile);
-  my $array=[];
-  map {push($array,{
-      propertyName  => CamoMap::recase($_),
-      type          =>"User",
-      propertyValues=>[]})} @list;
-  return $array;
-}
+
 
 # input: array of action actionValues
 # output: hash reference with each actionvalue set to true
 sub ActionValues {
   my $self=shift;
+  my $value=shift;
+  $value=JSON::MaybeXS::true if not defined $value;
   my @list=split(/[,\"]/,$self->{operations});
   @list=qw(HEAD DELETE POST GET OPTIONS PATCH PUT) if !@list;
   my $hash={};
-  map {$hash->{$_}=JSON::MaybeXS::true} @list;
+  map {$hash->{$_}=$value} @list;
   return $hash;
 }
 
@@ -131,10 +156,16 @@ sub Subjects {
     {type=>"AND",subjects=>[{type=>"AuthenticatedUsers"}]};
 }
 
+# returns a properly formed Conditions hash in compliance with what
+# ForgeRock expects in it's JSON file. If the scheme is anonymous an
+# emply hash reference is returned. If that doesn't work for ForgeRock,
+# the caller needs to delete it from the resulting JSON;
 sub Conditions {
   my $self=shift;
+  my %args=@_;
   if($self->Scheme ne "anonymous") {
     my $filter=$self->Filter;
+    $filter="(!($filter))" if $args{invert};
     my $authlevel=200;
     my $cond=[];
     push($cond,{type=>"AuthLevelFlow",authLevel=>$authlevel}) if $authlevel;
