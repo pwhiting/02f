@@ -16,8 +16,25 @@ sub new {
     #shortname=>$args->{name}=~s/$remove/*/rg
   };
 
-  $self->{url}=~s/\*?\{\/\.\.\.\/\*\,\*\}//g;
-  $self->{url}=~s/\/\.\.\.\/\*/\/\*/g;
+
+  # may need to rethink this - it replaces {/.../*,*} with *
+  # and some of these are in a few policies {*/.../*,*}
+   $self->{url}=~s/\*?\{\*?\/\.\.\.\/\*\,\*\}//g;
+   warn "unknown syntax: ". $self->{url}."\n" if ($self->{url}=~/\/\.\.\.\/\*/);
+   $self->{url}=~s/\/\.\.\.\/\*/\/\*/g;
+
+   $self->{url}=~s/\/+/\//g;
+
+  #$self->{url}=~s/\*+/\*/g;
+  ## this is the right place to get the expansion ready, not
+  ## below in ExpandResources
+  ##-*-
+  #$self->{url}=~s/\*?\.\.\.\/?\*?/-*-/g;
+
+#  $self->{url}=~s/\.\.\.\/?/\*/g;
+
+
+
 
   bless $self, $class;
   $self->Resources;
@@ -99,7 +116,6 @@ sub Resources {
   my $self = shift;
   $self->{resources} = $self->ExpandResources("http*://" . $self->{parent}->URL.$self->URL)
     if(!defined $self->{resources});
-    #return [$self->FullURL . "*?*", $self->FullURL . "*"];
   return $self->{resources};
 }
 
@@ -116,7 +132,12 @@ sub ExpandResources {
         push($list,@{$self->ExpandResources($pre.$item.$post)});
     }
   } else {
-    $list=[$url];
+    $url=~s/\*+/*/g; # not sure why it needs /g to work...
+    if($url=~/\*$/) {
+      $list=[$url,"$url?","$url?*"];
+    } else {
+      $list=[$url];
+    }
   }
   return $list;
 }
