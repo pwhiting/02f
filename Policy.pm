@@ -60,7 +60,14 @@ sub Filter {
 
 sub FilterName {
   my $self=shift;
-  return $self->{authorization}->{value};
+  my %args=@_;
+  my $name=$self->{authorization}->{value};
+  if($args{invert}){
+    $name=~s/Allow/Deny everyone but: (/;
+    $name=~s/Allow//g;
+    $name.=")";
+  }
+  return $name;
 }
 
 sub Scheme {
@@ -145,6 +152,7 @@ sub ExpandResources {
 
 sub Name {
   my $self=shift;
+
   return $self->{name};
 }
 
