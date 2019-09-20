@@ -54,7 +54,8 @@ sub Merge {
 
 sub Filter {
   my $self=shift;
-  return $self->{parent}->LookupFilter($self->{authorization}->{value});
+  my $filter=$self->{parent}->LookupFilter($self->FilterName);
+  return ($filter eq "(*)" ) ? "": $filter;
 }
 
 sub FilterName {
@@ -153,8 +154,8 @@ sub Name {
 # output: hash reference with each actionvalue set to true
 sub ActionValues {
   my $self=shift;
-  my $value=shift;
-  $value=JSON::MaybeXS::true if not defined $value;
+  my %args=@_;
+  my $value=($args{invert})?JSON::MaybeXS::false : JSON::MaybeXS::true;
   my @list=split(/[,\"]/,$self->{operations});
   @list=qw(HEAD DELETE POST GET OPTIONS PATCH PUT) if !@list;
   my $hash={};
@@ -186,8 +187,9 @@ sub Conditions {
   my %args=@_;
   if($self->Scheme ne "anonymous") {
     my $filter=$self->Filter;
-    $filter="(!($filter))" if $args{invert};
+    return [] if !$filter && $args{invert};  #this needs work - what to do if the query is empty? you want to deny all non-authenticated users, so maybe have logic to do this in the subject section and not here
     my $authlevel=200;
+    $filter="(!($filter))" if $args{invert};
     my $cond=[];
     push($cond,{type=>"AuthLevelFlow",authLevel=>$authlevel}) if $authlevel;
     push($cond,{type=>"LDAPFilter",ldapFilter=>$filter}) if $filter;
