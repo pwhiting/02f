@@ -63,9 +63,8 @@ sub FilterName {
   my %args=@_;
   my $name=$self->{authorization}->{value};
   if($args{invert}){
-    $name=~s/Allow/Deny everyone but: (/;
     $name=~s/Allow//g;
-    $name.=")";
+    $name="Deny everyone but: ($name)";
   }
   return $name;
 }
