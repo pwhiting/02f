@@ -1,5 +1,5 @@
 package Policy;
-use JSON::MaybeXS ();
+use JSON::PP ();
 use strict;
 use Rules;
 use Data::Dumper::Concise;
@@ -163,7 +163,7 @@ sub Name {
 sub ActionValues {
   my $self=shift;
   my %args=@_;
-  my $value=($args{invert})?JSON::MaybeXS::false : JSON::MaybeXS::true;
+  my $value=($args{invert})?JSON::PP::false : JSON::PP::true;
   my @list=split(/[,\"]/,$self->{operations});
   @list=qw(HEAD DELETE POST GET OPTIONS PATCH PUT) if !@list;
   my $hash={};
