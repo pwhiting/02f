@@ -194,11 +194,11 @@ sub Conditions {
   my %args=@_;
   if($self->Scheme ne "anonymous") {
     my $filter=$self->Filter;
-    return [] if !$filter && $args{invert};  #this needs work - what to do if the query is empty? you want to deny all non-authenticated users, so maybe have logic to do this in the subject section and not here
     my $authlevel=200;
+    $authlevel=0 if !$filter && $args{invert};  #this needs work - what to do if the query is empty? you want to deny all non-authenticated users, so maybe have logic to do this in the subject section and not here
     $filter="(!($filter))" if $args{invert};
     my $cond=[];
-    push($cond,{type=>"AuthLevelFlow",authLevel=>$authlevel}) if $authlevel;
+    push($cond,{type=>"AuthLevelFlow",authLevel=>$authlevel}) ;#if defined $authlevel;
     push($cond,{type=>"LDAPFilter",ldapFilter=>$filter}) if $filter;
     return {type=>"AND",conditions=>$cond};
   }

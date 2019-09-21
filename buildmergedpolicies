@@ -4,36 +4,10 @@ use Policy;
 use strict;
 use Data::Dumper::Concise;
 use JSON::PP;
-#use ForgeRockSort;
+use ForgeRockSort;
 
-
-# the block below can be simplified to just the single line creating
-# the json object. However, I've included it to make the output JSON
-# easier to read, as it is all in the expected order.
 my $json = JSON::PP->new->ascii->pretty->allow_nonref;
-my %order = (
-active              => 1,
-description         => 2,
-applicationName     => 3,
-resourceTypeUuid    => 4,
-name                => 5,
-resources           => 6,
-subject             => 7,
-condition           => 8,
-actionValues        => 9,
-resourceAttributes  => 10,
-type                => 11,
-subjects            => 12,
-subject             => 13,
-authlevel           => 14,
-ldapFilter          => 15,
-conditions          => 16
-);
-$json->sort_by(sub {
-    ($order{$JSON::PP::a} // 20) <=> ($order{$JSON::PP::b} // 20)
-    or $JSON::PP::a cmp $JSON::PP::b
-});
-#$json->sort_by(ForgeRockSort::Sort);
+$json->sort_by($ForgeRockSort::sorter);
 
 # read in every file and merge policies which have the same LDAP filter
 my $merged_policies={};
