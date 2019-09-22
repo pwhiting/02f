@@ -160,7 +160,7 @@ sub ActionValues {
 # maybe just select the top path
 sub Path {
   my $self=shift;
-  my $name=$self->{parent}->EnvID . "/" . $self->{parent}->Host;
+  my $name=$self->{parent}->Lane . "/" . $self->{parent}->Host;
   $name.="/$self->{shortname}" if $self->{name} ne "default";
   return $name=~s/\//\!/gr;
 }

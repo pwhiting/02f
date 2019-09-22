@@ -36,32 +36,14 @@ sub Host {
   $self->{xml}->{application}->{authHost};
 }
 
-sub EnvID {
-  my $self=shift;
-  warn "change call from EnvID to Lane\n";
-  $self->{xml}->{environment}->{id};
-}
-
 sub Lane {
   my $self=shift;
   $self->{xml}->{environment}->{id};
 }
 
-sub AppID {
-  my $self=shift;
-  warn "change call from AppID to URL\n";
-  $self->{xml}->{application}->{id};
-}
-
 sub URL {
   my $self=shift;
   $self->{xml}->{application}->{id};
-}
-
-sub HostEnv {
-  my $self=shift;
-  warn "remove call to HostEnv\n";
-  return $self->HostWithLaneInserted;
 }
 
 sub HostWithLaneInserted {
