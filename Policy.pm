@@ -13,29 +13,14 @@ sub new {
     authentication=>$args->{authentication} || $args->{xml}->{authentication},
     operations=>$args->{operations} || $args->{xml}->{operations},
     url=>$args->{url},
-    #shortname=>$args->{name}=~s/$remove/*/rg
   };
-
 
   # may need to rethink this - it replaces {/.../*,*} with *
   # and some of these are in a few policies {*/.../*,*}
-   $self->{url}=~s/\*?\{\*?\/\.\.\.\/\*\,\*\}//g;
-   warn "unknown syntax: ". $self->{url}."\n" if ($self->{url}=~/\/\.\.\.\/\*/);
-   $self->{url}=~s/\/\.\.\.\/\*/\/\*/g;
-
-   $self->{url}=~s/\/+/\//g;
-
-  #$self->{url}=~s/\*+/\*/g;
-  ## this is the right place to get the expansion ready, not
-  ## below in ExpandResources
-  ##-*-
-  #$self->{url}=~s/\*?\.\.\.\/?\*?/-*-/g;
-
-#  $self->{url}=~s/\.\.\.\/?/\*/g;
-
-
-
-
+  $self->{url}=~s/\*?\{\*?\/\.\.\.\/\*\,\*\}//g;
+  warn "unknown syntax: ". $self->{url}."\n" if ($self->{url}=~/\/\.\.\.\/\*/);
+  $self->{url}=~s/\/\.\.\.\/\*/\/\*/g;
+  $self->{url}=~s/\/+/\//g;
   bless $self, $class;
   $self->Resources;
   $self->Attributes;
@@ -54,7 +39,9 @@ sub Merge {
 
 sub Filter {
   my $self=shift;
-  my $filter=$self->{parent}->LookupFilter($self->FilterName);
+  my %args=@_;
+  $args{type}="filter" if $args{type} ne "expr";
+  my $filter=$self->{parent}->LookupFilter($self->FilterName,$args{type});
   return ($filter eq "(*)" ) ? "": $filter;
 }
 

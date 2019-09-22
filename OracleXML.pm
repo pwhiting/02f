@@ -5,7 +5,6 @@ use Data::Dumper::Concise;
 use Rules;
 use Policy;
 
-
 sub new {
   my ($class,$file)=@_;
   my $self = {file=>$file};
@@ -14,8 +13,12 @@ sub new {
   $self->{xml}=XMLin($file,ForceArray => ['rule','policy','profile-att']);
   $self->{app}=$self->{xml}->{application};
   $self->{filters}=Rules->new($self->{app}->{authorization}->{rule});
-
   return $self;
+}
+
+sub Context {
+  my $self=shift;
+  $self->{xml}->{application}->{cctx};
 }
 
 sub File {
@@ -24,8 +27,8 @@ sub File {
 }
 
 sub LookupFilter {
-  my ($self,$string)=@_;
-  $self->{filters}->Lookup($string);
+  my ($self,$string,$type)=@_;
+  $self->{filters}->Lookup($string,$type);
 }
 
 sub Host {
@@ -82,10 +85,6 @@ sub DefaultPolicy {
   });
 }
 
-
-#my $policy_match=quotemeta("{/.../*,*}")."|".quotemeta("*{/.../*,*}");
-#$policy_url=~s/($policy_match)/#/g;
-
 my $ign="(Standard Files|SSOS|Sign-In|Sign-Out)";
 
 sub GetPolicies {
@@ -94,21 +93,15 @@ sub GetPolicies {
   if($self->{app}->{policy}) {
     foreach my $name (keys $self->{app}->{policy}) {
       next if $name=~/$ign/i;
-      #next if (grep {$name eq $_} @ignore);
       my $path=$self->{app}->{policy}->{$name}->{url};
-#      next if(!$url);
-#      warn "empty url in ". $self->File . ": policy=$name\n";
       push($policies,Policy->new({
           name=>$name,
           url=>$path,
           parent=>$self,
           xml=>$self->{app}->{policy}->{$name}
       }));
-      #warn Dumper($policy_url);
-    #  warn "Policy name $name: ".$self->{app}->{policy}->{$name}->{url}."\n";
     }
   }
-  #warn Dumper($policies);
   return $policies;
 }
 

@@ -34,8 +34,7 @@ sub GetExpr {
 sub MakeFilters {
   my ($self,$rules)=@_;
   my $allow="*";
-  my $deny="!*";
-#  warn Dumper($rules);
+  my $deny="!*"; # this needs to change
   foreach my $rule (keys $rules) {
     next if $rule=~/~~default-headers~~/;
     my $filter="";
@@ -43,32 +42,40 @@ sub MakeFilters {
     my $D=GetExpr($rules->{$rule}->{deny}->{condition},"!");
     my $atp=($rules->{$rule}->{"allow-takes-precedence"} eq "true");
 
-# see explaination below
-    if(!$A) {$A=$D;}
-    if(!$D) {$D=$A;}
+    my $a=($A)?"A":"_";
+    $a="*" if($A eq $allow);
+    my $d=($D)?"D":"_";
+    $d="#" if($D eq $deny);
+    my $p=($atp)?"t":"f";
+    $self->{$rule}->{expr}="$a $d $p";
 
-    if(!$A && !$D) {$filter=$deny;}
-    elsif ($atp) {$filter=$A;}
-    elsif (($A ne $D)&&($A ne $allow)&&($D ne $deny)) {$filter="&($D)$A";}
-    else {$filter=$D;}
+    if(!$A) {$filter=$deny;}
+    elsif($atp) {$filter=$A;}
+    elsif(!$D) {$filter=$A;}
+    elsif($A eq $allow || $D eq $deny) {$filter=$D;}
+    else {$filter="&($D)$A";}
 
-    $self->{$rule}="(". lc($filter). ")";
+    $self->{$rule}->{filter}="(". lc($filter). ")";
   }
 }
 
 
 sub Lookup {
-  my ($self,$key)=@_;
-  if($key=~/\|/) {
-    my @keys=split /\s*\|\s*/, $key;
-    return "(|" . join("",(map {$self->{$_}} @keys)) . ")";
-  } elsif ($key=~/\&/) {
-    my @keys=split /\s*\&\s*/, $key;
-    return "(\&" . join("",(map {$self->{$_}} @keys)) . ")";;
+  my ($self,$key,$type)=@_;
+  $type="filter" if not $type;
+  if($key=~/([\|\&])/) {
+    my $opr=$1;
+    my @keys=split /\s+\Q$opr\E\s+/, $key;
+    if($type eq "filter") {
+      return "($opr" . join("",(map {$self->{$_}->{$type}} @keys)) . ")";
+    } else {
+      return join(" $opr ",(map {$self->{$_}->{$type}} @keys));
+    }
   } else {
-    return $self->{$key};
+    return $self->{$key}->{$type};
   }
 }
+
 
 sub new {
   my ($class,$xmlin)=@_;
@@ -108,18 +115,20 @@ f means allow_takes_precedence is false
 
 ( ) (!) t -> (!)
 ( ) (!) f -> (!)
-( ) (D) t -> (D)
-( ) (D) f -> (D)
+( ) (D) t -> (!)
+( ) (D) f -> (!)
 ( ) ( ) t -> (!)
 ( ) ( ) f -> (!)
 
 One way to process the above would be with 18 if statements.
 However, there is an easier way:
 
-if A is empty then set A=D
-if D is empty then set D=A
+if A is empty then deny
+if $allow_takes_prcedence then filter = A
+else {
+ if d is empty d=A
+ if A and D are different and A!=(*) and D!=(!) then set filter=A&D
+ else filter=D
+}
 
-if A and D are still empty then set filter=false
-else if allow_takes_precedence is true then set filter=A
-else if A and D are different and A!=(*) and D!=(!) then set filter=A&D
-else set filter = D
+9/22/2019: ptw - may need to rethink the above for places where two rulesets are combined
