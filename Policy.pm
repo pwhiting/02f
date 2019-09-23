@@ -24,6 +24,7 @@ sub new {
   bless $self, $class;
   $self->Resources;
   $self->Attributes;
+
   return $self;
 }
 
@@ -179,7 +180,7 @@ sub Subjects {
 sub Conditions {
   my $self=shift;
   my %args=@_;
-  if($self->Scheme ne "anonymous") {
+  if(1||$self->Scheme ne "anonymous") {
     my $filter=$self->Filter;
     my $authlevel=200;
     $authlevel=0 if !$filter && $args{invert};  #this needs work - what to do if the query is empty? you want to deny all non-authenticated users, so maybe have logic to do this in the subject section and not here
