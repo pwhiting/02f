@@ -46,7 +46,9 @@ sub Filter {
   my %args=@_;
   $args{type}="filter" if $args{type} ne "expr";
   my $filter=$self->{parent}->LookupFilter($self->{authorization}->{value},$args{type});
-  return ($filter eq "(*)" ) ? "": $filter; # this needs to be fixed - what should the filter be if it is always to match?
+  $filter="" if $filter eq "(!*)";
+  $filter="" if $filter eq "(*)";
+  return $filter;
 }
 
 sub FilterName {
