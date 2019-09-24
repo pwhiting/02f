@@ -43,13 +43,14 @@ sub Filter {
   my %args=@_;
   $args{type}="filter" if $args{type} ne "expr";
   my $filter=$self->{parent}->LookupFilter($self->FilterName,$args{type});
-  return ($filter eq "(*)" ) ? "": $filter;
+  return ($filter eq "(*)" ) ? "": $filter; # this needs to be fixed - what should the filter be if it is always to match?
 }
 
 sub FilterName {
   my $self=shift;
   my %args=@_;
   my $name=$self->{authorization}->{value};
+  $name=~s/\Q\&/and/g;
   if($args{invert}){
     $name=~s/Allow//g;
     $name="Deny everyone but: ($name)";
@@ -168,9 +169,10 @@ sub Path {
 
 sub Subjects {
   my $self=shift;
-  return ($self->Scheme eq "anonymous")?
-    {type=>"NOT",subject=>{type=>"NONE"}}: # should be subjects? (plural)
-    {type=>"AND",subjects=>[{type=>"AuthenticatedUsers"}]};
+  return {type=>"NOT",subject=>"Never Match"};
+  #return ($self->Scheme eq "anonymous")?
+  #  {type=>"NOT",subject=>{type=>"NONE"}}: # should be subjects? (plural)
+  #  {type=>"AND",subjects=>[{type=>"AuthenticatedUsers"}]};
 }
 
 # returns a properly formed Conditions hash in compliance with what
@@ -180,7 +182,7 @@ sub Subjects {
 sub Conditions {
   my $self=shift;
   my %args=@_;
-  if(1||$self->Scheme ne "anonymous") {
+  if(1||$self->Scheme ne "anonymous") { # this condition might go away - is there ever a case where we don't have any conditions?
     my $filter=$self->Filter;
     my $authlevel=200;
     $authlevel=0 if !$filter && $args{invert};  #this needs work - what to do if the query is empty? you want to deny all non-authenticated users, so maybe have logic to do this in the subject section and not here

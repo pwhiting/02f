@@ -1,11 +1,7 @@
 #!/usr/bin/perl
-use JSON::MaybeXS ();
 use OracleXML;
 use Policy;
 use strict;
-use Data::Dumper::Concise;
-
-my $json = JSON::MaybeXS->new(utf8 => 1, pretty => 1, sort_by => 1);
 
 foreach my $file (@ARGV) {
   my $oracle=OracleXML->new($file);
@@ -18,9 +14,8 @@ foreach my $file (@ARGV) {
       $policy->URL,
       $policy->FilterName,
       $policy->Filter,
+      $policy->Scheme,
       $policy->Filter(type=>"expr")=~s/\s+/\t/rg
       ) . "\n";
   }
 }
-
-__END__

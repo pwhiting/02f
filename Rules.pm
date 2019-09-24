@@ -2,7 +2,7 @@ package Rules;
 use strict;
 use Data::Dumper::Concise;
 use Scalar::Util qw/reftype/;
-
+use Bypass;
 
 #input: an xml expression - one of the following 3:
 # 1. <condition  type='ldap' >ldap:///ou=People,o=lds??sub?(X)</condition>
@@ -49,12 +49,12 @@ sub MakeFilters {
     my $p=($atp)?"t":"f";
     $self->{$rule}->{expr}="$a $d $p";
 
+    #if($d eq "D" and $a eq "A" and $atp) {$filter="|($D)$A";}
     if(!$A) {$filter=$deny;}
     elsif($atp) {$filter=$A;}
     elsif(!$D) {$filter=$A;}
     elsif($A eq $allow || $D eq $deny) {$filter=$D;}
     else {$filter="&($D)$A";}
-
     $self->{$rule}->{filter}="(". lc($filter). ")";
   }
 }
@@ -63,7 +63,13 @@ sub MakeFilters {
 sub Lookup {
   my ($self,$key,$type)=@_;
   $type="filter" if not $type;
-  if($key=~/([\|\&])/) {
+
+  if($Bypass::rule->{$key}) {
+    return "X" if $type eq "expr";
+    return $Bypass::rule->{$key};
+  }
+
+  if($key=~/\s+([\|\&])\s+/) {
     my $opr=$1;
     my @keys=split /\s+\Q$opr\E\s+/, $key;
     if($type eq "filter") {
@@ -107,11 +113,11 @@ f means allow_takes_precedence is false
 (*) ( ) f -> (*)
 
 (A) (!) t -> (A)
-(A) (!) f -> (!)
-(A) (D) t -> (A)
+(A) (!) f -> (!)  --- never occurs
+(A) (D) t -> (A)  --- A&D allow: allow men deny: deny under 12 (!age<12) -> (gender=man)&(!age<12)
 (A) (D) f -> A&D
 (A) ( ) t -> (A)
-(A) ( ) f -> (A)
+(A) ( ) f -> (A)  --- 75 matches
 
 ( ) (!) t -> (!)
 ( ) (!) f -> (!)
