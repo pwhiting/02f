@@ -3,6 +3,8 @@ use OracleXML;
 use Policy;
 use strict;
 
+print "File\tLane\tHost\tContext\tURL\tFilterName\tFilter\tScheme\tShape\n";
+
 foreach my $file (@ARGV) {
   my $oracle=OracleXML->new($file);
   foreach my $policy (@{$oracle->GetPolicies}) {
@@ -10,7 +12,7 @@ foreach my $file (@ARGV) {
       $oracle->File=~s/\.\.\///r,
       $oracle->Lane,
       $oracle->Host,
-      $oracle->Context, #context
+      $oracle->Context,
       $policy->URL,
       $policy->FilterName,
       $policy->Filter,

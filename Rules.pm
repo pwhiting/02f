@@ -26,6 +26,16 @@ sub GetExpr {
   return "$expr";
 }
 
+sub EscapeRuleName {
+  my $name=shift;
+  return $name=~s/\&/and/rg;
+}
+# this is a quirk - the oracle policy exscape the rule name
+# differently when listed in a policy
+sub EscapeRuleNameInPolicy {
+  my $name=shift;
+  return $name=~s/\Q\&/and/rg;
+}
 #input: hash reference of rules, each hash key being a rule name
 #       Everything within the hash follows the xml export from Oracle.
 #output: hash reference where each key is the rule name and the value
@@ -37,16 +47,25 @@ sub MakeFilters {
   my $deny="!*"; # this needs to change
   foreach my $rule (keys $rules) {
     next if $rule=~/~~default-headers~~/;
+  #  my $erule=EscapeRuleName($rule);
+#  warn "rule name is $rule.\n";
     my $filter="";
     my $A=GetExpr($rules->{$rule}->{allow}->{condition});
     my $D=GetExpr($rules->{$rule}->{deny}->{condition},"!");
     my $atp=($rules->{$rule}->{"allow-takes-precedence"} eq "true");
+
+#    warn "rule $rule A=$A\n";
+#    warn "raw $rule Allow". Dumper($rules->{$rule}->{allow}->{condition}) .".\n";
+#    warn "raw $rule Deny". Dumper($rules->{$rule}->{deny}->{condition}) .".\n";
+#    warn "rule $rule D=$D\n";
 
     my $a=($A)?"A":"_";
     $a="*" if($A eq $allow);
     my $d=($D)?"D":"_";
     $d="#" if($D eq $deny);
     my $p=($atp)?"t":"f";
+
+    #put erule
     $self->{$rule}->{expr}="$a $d $p";
 
     #if($d eq "D" and $a eq "A" and $atp) {$filter="|($D)$A";}
@@ -55,30 +74,40 @@ sub MakeFilters {
     elsif(!$D) {$filter=$A;}
     elsif($A eq $allow || $D eq $deny) {$filter=$D;}
     else {$filter="&($D)$A";}
+
+#    warn "setting $rule to $filter\n";
+    #$self->{$erule}->{filter}="(". lc($filter). ")";
     $self->{$rule}->{filter}="(". lc($filter). ")";
+
   }
 }
 
 
 sub Lookup {
-  my ($self,$key,$type)=@_;
+  my ($self,$rule,$type)=@_;
   $type="filter" if not $type;
 
-  if($Bypass::rule->{$key}) {
+  if($Bypass::rule->{$rule}) {
     return "X" if $type eq "expr";
-    return $Bypass::rule->{$key};
+    return $Bypass::rule->{$rule};
   }
 
-  if($key=~/\s+([\|\&])\s+/) {
+  #$rule=EscapeRuleNameInPolicy($rule);
+#  print "processing $rule\n";
+
+  if($rule=~/\s+([\|\&])\s+/) {
     my $opr=$1;
-    my @keys=split /\s+\Q$opr\E\s+/, $key;
+    my @keys=map {s/\\\&/\&/rg} (split /\s+\Q$opr\E\s+/, $rule);
+  #  my @keys=(split /\s+\Q$opr\E\s+/, $rule);
+
+#    print "split:".join(":",@keys).".\n";
     if($type eq "filter") {
       return "($opr" . join("",(map {$self->{$_}->{$type}} @keys)) . ")";
     } else {
       return join(" $opr ",(map {$self->{$_}->{$type}} @keys));
     }
   } else {
-    return $self->{$key}->{$type};
+    return $self->{$rule}->{$type};
   }
 }
 

@@ -9,7 +9,6 @@ sub new {
   my ($class,$file)=@_;
   my $self = {file=>$file};
   bless $self, $class;
-
   $self->{xml}=XMLin($file,ForceArray => ['rule','policy','profile-att']);
   $self->{app}=$self->{xml}->{application};
   $self->{filters}=Rules->new($self->{app}->{authorization}->{rule});
@@ -52,6 +51,17 @@ sub HostWithLaneInserted {
   return $self->Host=~s/\./-$lane./r;
 }
 
+sub DefaultAuthentication {
+  my $self=shift;
+  return $self->{app}->{authentication};
+}
+sub DefaultAuthorization {
+  my $self=shift;
+  return {
+      "headers"=>$self->{app}->{authorization}->{default}->{headers},
+      "value"=>$self->{app}->{authorization}->{default}->{value}
+  };
+}
 sub DefaultPolicy {
   my $self=shift;
   Policy->new({
@@ -59,11 +69,8 @@ sub DefaultPolicy {
     url=>"*",
     parent=>$self,
     operations => "HEAD,DELETE,POST,GET,OPTIONS,PATCH,PUT",
-    authentication => $self->{app}->{authentication},
-    authorization => {
-        "headers"=>$self->{app}->{authorization}->{default}->{headers},
-        "value"=>$self->{app}->{authorization}->{default}->{value}
-    }
+    authentication => $self->DefaultAuthentication,
+    authorization => $self->DefaultAuthorization,
   });
 }
 

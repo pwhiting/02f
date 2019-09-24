@@ -15,6 +15,9 @@ sub new {
     url=>$args->{url},
   };
 
+  $self->{authorization}=$self->{parent}->DefaultAuthorization if(!$self->{authorization});
+  $self->{authentication}=$self->{parent}->DefaultAuthentication if(!$self->{authentication});
+
   # may need to rethink this - it replaces {/.../*,*} with *
   # and some of these are in a few policies {*/.../*,*}
   $self->{url}=~s/\*?\{\*?\/\.\.\.\/\*\,\*\}//g;
@@ -42,7 +45,7 @@ sub Filter {
   my $self=shift;
   my %args=@_;
   $args{type}="filter" if $args{type} ne "expr";
-  my $filter=$self->{parent}->LookupFilter($self->FilterName,$args{type});
+  my $filter=$self->{parent}->LookupFilter($self->{authorization}->{value},$args{type});
   return ($filter eq "(*)" ) ? "": $filter; # this needs to be fixed - what should the filter be if it is always to match?
 }
 
@@ -50,7 +53,6 @@ sub FilterName {
   my $self=shift;
   my %args=@_;
   my $name=$self->{authorization}->{value};
-  $name=~s/\Q\&/and/g;
   if($args{invert}){
     $name=~s/Allow//g;
     $name="Deny everyone but: ($name)";
