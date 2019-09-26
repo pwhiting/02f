@@ -3,7 +3,7 @@ use OracleXML;
 use Policy;
 use strict;
 
-print "File\tLane\tHost\tContext\tURL\tFilterName\tFilter\tScheme\tShape\n";
+print "File\tLane\tHost\tContext\tURL\tFilterName\tFilter\tScheme\tAttributes\tShape\n";
 
 foreach my $file (@ARGV) {
   my $oracle=OracleXML->new($file);
@@ -17,7 +17,8 @@ foreach my $file (@ARGV) {
       $policy->FilterName,
       $policy->Filter,
       $policy->Scheme,
-      $policy->Filter(type=>"expr")=~s/\s+/\t/rg
+      join(",",sort(map {$_->{propertyName}} @{$policy->ResourceAttributes})),
+      $policy->Shape=~s/\s+/\t/rg
       ) . "\n";
   }
 }

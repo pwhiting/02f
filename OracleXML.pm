@@ -11,7 +11,7 @@ sub new {
   bless $self, $class;
   $self->{xml}=XMLin($file,ForceArray => ['rule','policy','profile-att']);
   $self->{app}=$self->{xml}->{application};
-  $self->{filters}=Rules->new($self->{app}->{authorization}->{rule});
+  $self->{rules}=Rules->new($self->{app}->{authorization}->{rule});
   return $self;
 }
 
@@ -25,9 +25,9 @@ sub File {
   return $self->{file};
 }
 
-sub LookupFilter {
-  my ($self,$string,$type)=@_;
-  $self->{filters}->Lookup($string,$type);
+sub Rules {
+  my $self=shift;
+  return $self->{rules};
 }
 
 sub Host {

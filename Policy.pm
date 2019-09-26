@@ -43,23 +43,22 @@ sub Merge {
 
 sub Filter {
   my $self=shift;
-  my %args=@_;
-  $args{type}="filter" if $args{type} ne "expr";
-  my $filter=$self->{parent}->LookupFilter($self->{authorization}->{value},$args{type});
-  $filter="" if $filter eq "(!*)";
-  $filter="" if $filter eq "(*)";
-  return $filter;
+  return $self->{parent}->Rules->LookupFilter($self->{authorization}->{value});
+}
+
+sub Shape {
+  my $self=shift;
+  return $self->{parent}->Rules->LookupShape($self->FilterName);
 }
 
 sub FilterName {
   my $self=shift;
-  my %args=@_;
-  my $name=$self->{authorization}->{value};
-  if($args{invert}){
-    $name=~s/Allow//g;
-    $name="Deny everyone but: ($name)";
-  }
-  return $name;
+  return $self->{authorization}->{value};
+}
+
+sub InvertedFilterName {
+  my $self=shift;
+  return "Deny everyone but: (".$self->FilterName=~s/Allow//rg .")";
 }
 
 sub Scheme {
@@ -99,17 +98,7 @@ sub ResourceAttributes {
               @{$self->Attributes}];
 }
 
-sub Attributes1 {
-  my $self=shift;
-  $self->{attributes}=[];
-  print Dumper($self->{authorization}->{headers}->{success}->{"profile-att"});
-  if(my $profile=$self->{authorization}->{headers}->{success}->{"profile-att"}) {
-      $self->{attributes}=[map {CamoMap::recase($profile->{$_}->{attribute})}
-        (keys $profile)];
-  }
-  #print Dumper($self->{attributes});
-  return $self->{attributes};
-}
+
 
 # /.../ -> *?
 sub Resources {
